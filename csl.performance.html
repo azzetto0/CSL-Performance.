@@ -132,19 +132,18 @@
       </div>
     </div>
     <nav>
-      <button class="nav-btn" onclick="scrollToTop()">Home</button>
-      <button class="nav-btn" onclick="document.getElementById('gallerySection').scrollIntoView({behavior:'smooth'})">Gallery</button>
-      <button class="nav-btn primary" onclick="document.getElementById('uploadForm').scrollIntoView({behavior:'smooth'})">Upload Photo</button>
+      <button class="nav-btn" id="homeBtn">Home</button>
+      <button class="nav-btn" id="galleryBtn">Gallery</button>
+      <button class="nav-btn primary" id="uploadNavBtn">Upload Photo</button>
 
-      <!-- Admin nav button is intentionally hidden from the UI.
-           Admin access is available via keyboard shortcut (Ctrl/Cmd+Shift+A) or via ?admin=access URL. -->
+      <!-- Admin nav button intentionally hidden. Admin access: Ctrl/Cmd+Shift+A or ?admin=access -->
       <button id="adminNavBtn" class="nav-btn" style="display:none" aria-hidden="true" onclick="openAdmin()">Admin</button>
     </nav>
   </header>
 
   <!-- Admin password modal (reusable for login and password change) -->
   <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" style="display:none">
-    <div class="modal" id="adminModal">
+    <div class="modal" id="adminModal" role="document">
       <h4 id="modalTitle">Admin Login</h4>
       <div id="modalBody">
         <div class="small-muted" id="modalSubtitle">Enter admin password to continue.</div>
@@ -262,7 +261,7 @@
       </div>
 
       <aside class="panel uploader-right">
-        <form id="uploadForm" class="upload-meta">
+        <form id="uploadForm" class="upload-meta" onsubmit="return false;">
           <div class="form-row">
             <label class="field">Your name (optional)</label>
             <input id="ownerName" type="text" placeholder="Name or nickname">
@@ -516,6 +515,9 @@
   </footer>
 
   <script>
+    // diagnostic to confirm script runs
+    console.log("✅ Script loaded successfully");
+
     // ======= Storage keys =======
     const STORAGE_KEY = 'cslPerformanceGallery_v1';
     const PIN_KEY = 'cslPerformancePinned_v1';
@@ -525,17 +527,10 @@
     // For security: DO NOT put your plaintext password into a public file.
     // Instead compute SHA-256(hex) of your password locally and paste the HEX here.
     // Example (one-liner to run in your browser console to compute the hex):
-    // (async()=>{ const enc=new TextEncoder(); const h=await crypto.subtle.digest('SHA-256', enc.encode('your_password_here')); console.log(Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('')); })();
+    // (async()=>{ const enc=new TextEncoder(); const h=await crypto.subtle.digest('SHA-256', enc.encode('Zahra2004_Ali2002')); console.log(Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('')); })();
     //
-    // After running the snippet above (replace 'your_password_here' with your real password),
-    // paste the resulting hex string below as BUILT_IN_ADMIN_HASH.
-    //
-    // Example:
-    // const BUILT_IN_ADMIN_HASH = 'e7405b95...'; // <-- paste your SHA-256 hex here (do not publish your plaintext password)
-    //
-    // If you prefer not to embed the hash in the file at all, you can open the site locally and
-    // run in the console:
-    // localStorage.setItem('cslPerformanceAdminHash_v1', '<sha256-hex>');
+    // After running the snippet above (replace the password in the snippet), paste the resulting hex string below as BUILT_IN_ADMIN_HASH.
+    // Or run in console once: localStorage.setItem('cslPerformanceAdminHash_v1','<sha256-hex>');
     //
     let BUILT_IN_ADMIN_HASH = ''; // <-- PASTE YOUR SHA-256 HEX HERE (leave empty until you paste)
 
@@ -584,6 +579,10 @@
     const modalTitle = document.getElementById('modalTitle');
     const modalFeedback = document.getElementById('modalFeedback');
 
+    const homeBtn = document.getElementById('homeBtn');
+    const galleryBtn = document.getElementById('galleryBtn');
+    const uploadNavBtn = document.getElementById('uploadNavBtn');
+
     let stagingFiles = []; // {name, data}
     let adminLoggedIn = false;
     let adminLoginCallback = null; // callback to run after successful login (used by both adminNav and adminPanel flow)
@@ -618,6 +617,11 @@
       for(let i=0;i<a.length;i++) res |= (a.charCodeAt(i) ^ b.charCodeAt(i));
       return res === 0;
     }
+
+    // ======= Navigation button wiring (fixed) =======
+    homeBtn.addEventListener('click', ()=>{ window.scrollTo({top:0, behavior:'smooth'}); });
+    galleryBtn.addEventListener('click', ()=>{ document.getElementById('gallerySection').scrollIntoView({behavior:'smooth'}); });
+    uploadNavBtn.addEventListener('click', ()=>{ document.getElementById('uploadForm').scrollIntoView({behavior:'smooth'}); });
 
     // ======= File pick + drag/drop =======
     pickFilesBtn.addEventListener('click', ()=>fileInput.click());
@@ -929,7 +933,6 @@
       const ctrlOk = isMac ? e.metaKey : e.ctrlKey;
       if(ctrlOk && e.shiftKey && e.key && e.key.toLowerCase() === 'a'){
         e.preventDefault();
-        // open admin login modal (or admin panel if already logged)
         openAdmin();
       }
     });
@@ -937,8 +940,6 @@
     // ======= URL trigger: if user opens site with ?admin=access open admin modal (still requires password) =======
     function checkUrlForAdminTrigger(){
       const params = new URLSearchParams(location.search);
-      const val = (params.get('admin') || params.get('adminAccess') || params.get('adminAccess')=== '1') || '';
-      // Accept admin=access, admin=true, admin=1
       if(params.get('admin') === 'true' || params.get('admin') === '1' || params.get('admin') === 'access' || params.get('adminAccess') === 'true' || params.get('adminAccess') === '1'){
         adminLoginCallback = showAdminPanel;
         showModal('Admin Login', 'Enter admin password to continue.', 'Login');
