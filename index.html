@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CSL Performance</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg1:#0b0b0b; --bg2:#121212; --accent:#d7263d; --muted:#9a9a9a;
+      --glass: rgba(255,255,255,0.03);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; font-family: 'Poppins', sans-serif; color:#fff;
+      background: radial-gradient(1000px 400px at 10% 10%, rgba(215,38,61,0.06), transparent),
+                  linear-gradient(120deg,#071018 0%, #0d0f14 40%, #0b0b0b 100%);
+      -webkit-font-smoothing:antialiased;
+    }
+
+    header{
+      padding:22px 28px; display:flex; align-items:center; gap:18px; justify-content:space-between;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+      background: linear-gradient(180deg, rgba(255,255,255,0.01), transparent);
+      position:sticky; top:0; z-index:50;
+    }
+    .brand{display:flex; align-items:center; gap:14px}
+    .logo{
+      width:56px; height:56px; border-radius:12px; display:grid; place-items:center; font-weight:900;
+      font-size:20px; color:#111; background:linear-gradient(135deg,var(--accent),#ff7b7b);
+      box-shadow: 0 6px 24px rgba(215,38,61,0.18);
+    }
+    h1{font-size:20px; letter-spacing:1px; margin:0}
+    .sub{font-size:12px; color:var(--muted)}
+
+    nav{display:flex; gap:8px; align-items:center}
+    /* unified nav button sizing to be consistent across devices (fixes mobile/iphone height differences) */
+    .nav-btn{background:transparent; border:1px solid rgba(255,255,255,0.06); color:var(--muted); padding:12px 14px; border-radius:8px; cursor:pointer; min-height:44px; display:inline-flex; align-items:center; gap:8px}
+    .nav-btn.primary{background:var(--accent); color:white; border:0}
+    .nav-btn:active{transform:translateY(1px)}
+
+    /* small helper visible only on small screens for the mobile admin link */
+    .mobile-admin-link{display:none; font-size:13px; color:var(--muted); text-decoration:underline; cursor:pointer}
+
+    .container{max-width:1100px; margin:28px auto; padding:0 18px}
+
+    .uploader{
+      display:grid; grid-template-columns: 1fr 380px; gap:20px; align-items:start; margin-bottom:26px;
+    }
+
+    .panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:18px; border-radius:14px; border:1px solid rgba(255,255,255,0.03)}
+
+    .upload-left h2{margin:0 0 10px 0}
+    .hint{font-size:13px; color:var(--muted); margin-bottom:12px}
+
+    .upload-drop{
+      border:2px dashed rgba(255,255,255,0.04); border-radius:12px; padding:18px; min-height:160px; display:flex; flex-direction:column; gap:12px; justify-content:center; align-items:center; text-align:center;
+      transition:0.15s; background:var(--glass);
+    }
+    .upload-drop.dragover{border-color:rgba(215,38,61,0.8); box-shadow:0 10px 40px rgba(215,38,61,0.06)}
+    .big-btn{background:var(--accent); color:white; padding:12px 20px; border-radius:10px; cursor:pointer; border:0; font-weight:600}
+    .small{font-size:13px; color:var(--muted)}
+
+    form .row{display:flex; gap:8px; margin-bottom:8px}
+    input[type=text], input[type=number], select{width:100%; padding:10px 12px; border-radius:10px; border:1px solid rgba(255,255,255,0.04); background:transparent; color:white}
+    label.field{font-size:12px; color:var(--muted); margin-bottom:6px; display:block}
+
+    .upload-meta{display:flex; flex-direction:column}
+
+    .preview-grid{display:grid; grid-template-columns: repeat(auto-fill,minmax(160px,1fr)); gap:12px; margin-top:12px}
+    .preview{position:relative; border-radius:10px; overflow:hidden; min-height:110px; background:rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center}
+    .preview img{width:100%; height:100%; object-fit:cover}
+
+    /* right column */
+    .uploader-right{position:relative}
+    .form-row{margin-bottom:12px}
+    .submit-row{display:flex; gap:10px; align-items:center}
+
+    /* gallery */
+    .controls{display:flex; gap:10px; align-items:center; margin-bottom:12px}
+    .search{flex:1}
+    .filters{display:flex; gap:8px}
+
+    .grid{display:grid; grid-template-columns: repeat(auto-fill,minmax(250px,1fr)); gap:16px}
+    .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.36)); border-radius:12px; overflow:hidden; border:1px solid rgba(255,255,255,0.03)}
+    .card img{width:100%; height:180px; object-fit:cover}
+    .card-body{padding:12px}
+    .meta{display:flex; justify-content:space-between; gap:10px; align-items:center}
+    .meta .title{font-weight:700}
+    .chips{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px}
+    .chip{background:rgba(255,255,255,0.03); padding:6px 8px; border-radius:8px; font-size:12px}
+    .card-footer{display:flex; justify-content:space-between; align-items:center; padding:10px 12px; border-top:1px solid rgba(255,255,255,0.02)}
+    .link-btn{font-size:13px; color:var(--muted); text-decoration:none}
+
+    footer{margin-top:28px; text-align:center; color:var(--muted); padding:28px 0}
+
+    /* admin panel */
+    .admin-panel{position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:200}
+    .admin-card{width:920px; max-width:95%; background:#0a0a0a; border-radius:12px; padding:18px; border:1px solid rgba(255,255,255,0.04)}
+    .admin-card h3{margin:0 0 8px 0}
+    .admin-list{max-height:60vh; overflow:auto; margin-top:12px}
+    .admin-item{display:flex; gap:12px; align-items:center; padding:8px; border-bottom:1px solid rgba(255,255,255,0.02)}
+    .admin-item img{width:96px; height:64px; object-fit:cover; border-radius:8px}
+    .badge{background:rgba(255,255,255,0.04); padding:6px 8px; border-radius:8px; font-size:12px}
+
+    .pin-badge{background:linear-gradient(90deg,var(--accent),#ff7b7b); color:#111; padding:6px 8px; border-radius:8px; font-weight:700}
+
+    /* pinned hero */
+    .pinned {position:absolute; right:18px; top:18px; z-index:3; width:320px; max-width:40%;}
+    .pinned .pinned-card{background:linear-gradient(180deg, rgba(0,0,0,0.32), rgba(255,255,255,0.02)); padding:10px; border-radius:10px; border:1px solid rgba(255,255,255,0.04)}
+    .pinned img{width:100%; height:160px; object-fit:cover; border-radius:8px}
+
+    /* responsive */
+    @media (max-width:900px){
+      .uploader{grid-template-columns:1fr}
+      .upload-drop{min-height:140px}
+      .pinned{display:none}
+    }
+
+    /* mobile admin link visible on small screens */
+    @media (max-width:700px){
+      .mobile-admin-link{display:inline-block}
+    }
+
+    /* simple modal styling for password prompt (accessible) */
+    .modal-backdrop{position:fixed; inset:0; display:none; align-items:center; justify-content:center; z-index:400; background:rgba(0,0,0,0.6)}
+    .modal{background:#0b0b0b;border-radius:12px;padding:20px;max-width:420px;width:90%; border:1px solid rgba(255,255,255,0.04)}
+    .modal h4{margin:0 0 8px 0}
+    .modal .modal-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:12px}
+    .small-muted{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="logo">CSL</div>
+      <div>
+        <h1>CSL Performance</h1>
+        <div class="sub">Kurdistan & Iraq — Performance cars community</div>
+      </div>
+    </div>
+    <nav>
+      <button class="nav-btn" onclick="scrollToTop()">Home</button>
+      <button class="nav-btn" onclick="document.getElementById('gallerySection').scrollIntoView({behavior:'smooth'})">Gallery</button>
+      <button class="nav-btn primary" onclick="document.getElementById('uploadForm').scrollIntoView({behavior:'smooth'})">Upload Photo</button>
+      <!-- admin nav button (opens login modal if not logged in) -->
+      <button id="adminNavBtn" class="nav-btn" onclick="openAdmin()">Admin</button>
+      <!-- mobile-only explicit link that appends ?admin=true to the URL to trigger admin flow on mobile -->
+      <a id="mobileAdminLink" class="mobile-admin-link" href="?admin=true">Open Admin (mobile)</a>
+    </nav>
+  </header>
+
+  <!-- Admin password modal (reusable for login and password change) -->
+  <div id="modalBackdrop" class="modal-backdrop" role="dialog" aria-modal="true" style="display:none">
+    <div class="modal" id="adminModal">
+      <h4 id="modalTitle">Admin Login</h4>
+      <div id="modalBody">
+        <div class="small-muted" id="modalSubtitle">Enter admin password to continue.</div>
+        <div style="height:12px"></div>
+        <input id="modalPassInput" type="password" placeholder="Admin password" style="width:100%;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#fff">
+        <div id="modalFeedback" class="small-muted" style="margin-top:8px"></div>
+      </div>
+      <div class="modal-actions" style="margin-top:12px">
+        <button class="nav-btn" onclick="closeModal()">Cancel</button>
+        <button class="big-btn" id="modalSubmitBtn">Login</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======= Hero Section ======= -->
+<section class="hero">
+  <div class="hero-overlay">
+    <h1 class="hero-title">CSL Performance</h1>
+    <p class="hero-desc">Kurdistan & Iraq’s community for supercars and performance enthusiasts.<br>
+    Share your ride, showcase your power.</p>
+    <a href="https://www.instagram.com/your_instagram_here/" target="_blank" class="hero-btn">@your_instagram_here</a>
+  </div>
+  <div id="pinnedContainer" class="pinned" style="display:none">
+    <div class="pinned-card">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <div style="flex:1"><div id="pinnedModel" style="font-weight:800"></div><div id="pinnedBrandCity" class="small" style="color:var(--muted)"></div></div>
+        <div style="text-align:right"><button class="nav-btn" onclick="clearPinned()">Unpin</button></div>
+      </div>
+      <div style="height:8px"></div>
+      <img id="pinnedImg" src="" alt="Pinned image">
+    </div>
+  </div>
+</section>
+
+<style>
+.hero {
+  position: relative;
+  width: 100%;
+  height: 65vh;
+  background: url("IMG_4042.HEIC") center/cover no-repeat;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-align: center;
+  overflow: hidden;
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.55), rgba(0,0,0,0.8));
+}
+.hero-overlay {
+  position: relative;
+  z-index: 2;
+  padding: 0 20px;
+  max-width: 800px;
+}
+.hero-title {
+  font-size: 48px;
+  font-weight: 900;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+  text-shadow: 0 4px 16px rgba(0,0,0,0.6);
+}
+.hero-desc {
+  font-size: 18px;
+  line-height: 1.6;
+  color: #ccc;
+  margin-bottom: 24px;
+}
+.hero-btn {
+  background: var(--accent);
+  color: white;
+  padding: 12px 28px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 16px;
+  box-shadow: 0 4px 14px rgba(215,38,61,0.3);
+  transition: 0.25s;
+}
+.hero-btn:hover {
+  background: #ff445a;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(215,38,61,0.4);
+}
+@media (max-width: 700px) {
+  .hero-title {font-size: 34px;}
+  .hero-desc {font-size: 15px;}
+}
+</style>
+
+  <main class="container">
+    <section class="uploader">
+      <div class="panel upload-left">
+        <h2>Upload Your Car Photo</h2>
+        <div class="hint">Add photos of cars from across your city in Kurdistan & Iraq. Fill the car info (model, brand, HP, torque, city), and optionally add your Instagram or TikTok so people can follow you.</div>
+
+        <div id="dropZone" class="upload-drop" title="Drag & drop images here or click to choose">
+          <div>
+            <div style="font-weight:700; font-size:16px">Drag & drop or click to choose files</div>
+            <div class="small">Supports JPG, PNG. Up to 10 files at once. Images are stored locally in your browser (localStorage).</div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <button class="big-btn" id="pickFilesBtn">Choose Images</button>
+            <button class="big-btn" id="clearAllBtn" style="background:transparent; border:1px solid rgba(255,255,255,0.06);">Clear All</button>
+          </div>
+
+          <input id="fileInput" type="file" accept="image/*" multiple style="display:none">
+        </div>
+
+        <div class="preview-grid" id="previewGrid"></div>
+      </div>
+
+      <aside class="panel uploader-right">
+        <form id="uploadForm" class="upload-meta">
+          <div class="form-row">
+            <label class="field">Your name (optional)</label>
+            <input id="ownerName" type="text" placeholder="Name or nickname">
+          </div>
+
+          <div class="form-row">
+            <label class="field">Instagram (optional)</label>
+            <input id="instagram" type="text" placeholder="@username or full url">
+          </div>
+
+          <div class="form-row">
+            <label class="field">TikTok (optional)</label>
+            <input id="tiktok" type="text" placeholder="@username or full url">
+          </div>
+
+          <div class="form-row">
+            <div style="flex:1">
+              <label class="field">Brand</label>
+              <input list="brands" id="brandInput" placeholder="Select or type brand">
+              <datalist id="brands">
+                <!-- (kept the full list you had) -->
+  <option>Toyota</option>
+  <option>Lexus</option>
+  <option>Toyota GR</option>
+  <option>Honda</option>
+  <option>Acura</option>
+  <option>Nissan</option>
+  <option>Infiniti</option>
+  <option>Mitsubishi</option>
+  <option>Subaru</option>
+  <option>Mazda</option>
+  <option>Suzuki</option>
+  <option>Isuzu</option>
+  <option>Ford</option>
+  <option>Lincoln</option>
+  <option>Chevrolet</option>
+  <option>GMC</option>
+  <option>Cadillac</option>
+  <option>Chrysler</option>
+  <option>Dodge</option>
+  <option>Jeep</option>
+  <option>Ram</option>
+  <option>Tesla</option>
+  <option>Volkswagen</option>
+  <option>Audi</option>
+  <option>Porsche</option>
+  <option>Mercedes-Benz</option>
+  <option>Mercedes-AMG</option>
+  <option>BMW</option>
+  <option>MINI</option>
+  <option>Rolls-Royce</option>
+  <option>Bentley</option>
+  <option>Jaguar</option>
+  <option>Land Rover</option>
+  <option>Aston Martin</option>
+  <option>Ferrari</option>
+  <option>Lamborghini</option>
+  <option>McLaren</option>
+  <option>Maserati</option>
+  <option>Alfa Romeo</option>
+  <option>Fiat</option>
+  <option>Lancia</option>
+  <option>Pagani</option>
+  <option>Koenigsegg</option>
+  <option>Bugatti</option>
+  <option>Lotus</option>
+  <option>Opel</option>
+  <option>Peugeot</option>
+  <option>Citroën</option>
+  <option>Renault</option>
+  <option>Skoda</option>
+  <option>Seat</option>
+  <option>Vauxhall</option>
+  <option>Ford Performance</option>
+  <option>SVT</option>
+  <option>SRT</option>
+  <option>Hennessey</option>
+  <option>Rivian</option>
+  <option>Lucid</option>
+  <option>Fisker</option>
+  <option>BYD</option>
+  <option>Geely</option>
+  <option>Great Wall</option>
+  <option>Chery</option>
+  <option>NIO</option>
+  <option>Xpeng</option>
+  <option>SAIC</option>
+  <option>MG</option>
+  <option>GAC</option>
+  <option>Changan</option>
+  <option>Tata</option>
+  <option>Mahindra</option>
+  <option>Maruti Suzuki</option>
+  <option>Force Motors</option>
+  <option>Ola Electric</option>
+  <option>Volvo</option>
+  <option>Scania</option>
+  <option>MAN</option>
+  <option>Iveco</option>
+  <option>Daf</option>
+  <option>Mansory</option>
+  <option>Brabus</option>
+  <option>TechArt</option>
+  <option>Hamann</option>
+  <option>Gemballa</option>
+  <option>ABT Sportsline</option>
+  <option>300 Plus</option>
+  <option>Pagani</option>
+  <option>Zenvo</option>
+  <option>Rimac</option>
+  <option>Edsel</option>
+  <option>SAIPA</option>
+  <option>Iran Khodro</option>
+  <option>Kantanka</option>
+  <option>Perodua</option>
+  <option>Proton</option>
+  <option>VinFast</option>
+  <option>W Motors</option>
+  <option>Ginetta</option>
+  <option>Donkervoort</option>
+  <option>Spyker</option>
+  <option>Vencer</option>
+  <option>DeLorean</option>
+  <option>Horch</option>
+  <option>Trabant</option>
+              </datalist>
+            </div>
+
+            <div style="width:120px">
+              <label class="field">City</label>
+              <select id="citySelect">
+                <option>Erbil</option>
+                <option>Sulaymaniyah</option>
+                <option>Duhok</option>
+                <option>Kirkuk</option>
+                <option>Baghdad</option>
+                <option>Basra</option>
+                <option>Mosul</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div style="flex:1">
+              <label class="field">Car model (example: BMW M3 G80)</label>
+              <input id="modelInput" type="text" placeholder="Model name">
+            </div>
+            <div style="width:120px">
+              <label class="field">Horsepower (HP)</label>
+              <input id="hpInput" type="number" min="0" placeholder="HP">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div style="flex:1">
+              <label class="field">Torque (Nm)</label>
+              <input id="torqueInput" type="number" min="0" placeholder="Torque">
+            </div>
+            <div style="width:120px">
+              <label class="field">Year (optional)</label>
+              <input id="yearInput" type="number" min="1900" max="2100" placeholder="Year">
+            </div>
+          </div>
+
+          <div class="submit-row">
+            <button type="button" class="big-btn" id="uploadBtn">Upload to CSL</button>
+            <div class="small" style="color:var(--muted)">After upload images appear below in gallery. Saved locally on this browser.</div>
+          </div>
+        </form>
+      </aside>
+    </section>
+
+    <section id="gallerySection" class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:12px">
+        <div>
+          <h2 style="margin:0">Gallery</h2>
+          <div class="small">Browse performance cars uploaded by the community in Kurdistan & Iraq</div>
+        </div>
+
+        <div class="controls" style="flex:1; justify-content:flex-end">
+          <input id="searchInput" class="search" type="text" placeholder="Search model, owner, city, brand...">
+          <div class="filters">
+            <select id="brandFilter">
+              <option value="">All brands</option>
+              <option>BMW</option>
+              <option>Mercedes-AMG</option>
+              <option>Mercedes-Benz</option>
+              <option>Ferrari</option>
+              <option>Lamborghini</option>
+              <option>Porsche</option>
+              <option>Other</option>
+            </select>
+
+            <select id="cityFilter">
+              <option value="">All cities</option>
+              <option>Erbil</option>
+              <option>Sulaymaniyah</option>
+              <option>Duhok</option>
+              <option>Baghdad</option>
+              <option>Basra</option>
+              <option>Mosul</option>
+              <option>Other</option>
+            </select>
+
+            <button class="nav-btn" id="clearFilters">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="grid" class="grid"></div>
+    </section>
+
+    <footer>© 2025 CSL Performance — Built for the Kurds & Iraq car scene</footer>
+  </main>
+
+  <!-- ADMIN PANEL -->
+  <div id="adminPanel" class="admin-panel" aria-hidden="true">
+    <div class="admin-card">
+      <div style="display:flex; justify-content:space-between; align-items:center">
+        <h3>Admin Control</h3>
+        <div>
+          <button class="nav-btn" onclick="closeAdmin()">Close</button>
+        </div>
+      </div>
+      <div class="small" style="margin-top:6px;color:var(--muted)">Approve uploads, delete any post, pin a post to the home hero, and change the admin password.</div>
+
+      <div style="margin-top:12px; display:flex; gap:10px; align-items:center">
+        <input id="adminPassInput" type="password" placeholder="Enter admin password to change (current required)" style="padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:transparent;color:#fff;flex:1">
+        <button class="big-btn" id="adminLoginBtn">Login</button>
+      </div>
+
+      <div id="adminActions" style="display:none; margin-top:12px;">
+        <div class="admin-list" id="adminList"></div>
+
+        <div style="margin-top:12px; display:flex; gap:8px; align-items:center">
+          <button class="nav-btn" id="exportBtn">Export JSON</button>
+          <button class="nav-btn" id="importBtn">Import JSON</button>
+          <input id="importFile" type="file" accept="application/json" style="display:none">
+          <div style="flex:1"></div>
+          <button class="nav-btn" id="changePassBtn">Change Admin Password</button>
+          <div class="small" style="color:var(--muted)">Admin password is hashed and checked locally.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer style="text-align:center;padding:18px;background:#0b0b0b;color:#ccc;margin-top:24px;">
+    Created by <strong><a href="https://www.instagram.com/azzetto/" target="_blank" rel="noopener" style="color:#fff;text-decoration:none">@Azzetto</a></strong>
+    — CSL Performance © 2025
+  </footer>
+
+  <script>
+    // ======= Storage keys =======
+    const STORAGE_KEY = 'cslPerformanceGallery_v1';
+    const PIN_KEY = 'cslPerformancePinned_v1';
+    const LOCAL_HASH_KEY = 'cslPerformanceAdminHash_v1'; // optional override in localStorage
+
+    // ======= DEFAULT embedded hash (SHA-256) of your password "Zahra2004_Ali2002"
+    // Only the hash is stored here (no plaintext). If you later change the password from admin UI,
+    // the new password's hash will be stored in localStorage at LOCAL_HASH_KEY.
+    const BUILT_IN_ADMIN_HASH = 'e7405b95493bca98573b199fdf02971aaa819b777eda2b2d522bd6412658da3f';
+
+    // ======= Elements =======
+    const fileInput = document.getElementById('fileInput');
+    const pickFilesBtn = document.getElementById('pickFilesBtn');
+    const dropZone = document.getElementById('dropZone');
+    const previewGrid = document.getElementById('previewGrid');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const clearAllBtn = document.getElementById('clearAllBtn');
+
+    const ownerName = document.getElementById('ownerName');
+    const instagram = document.getElementById('instagram');
+    const tiktok = document.getElementById('tiktok');
+    const brandInput = document.getElementById('brandInput');
+    const modelInput = document.getElementById('modelInput');
+    const hpInput = document.getElementById('hpInput');
+    const torqueInput = document.getElementById('torqueInput');
+    const citySelect = document.getElementById('citySelect');
+    const yearInput = document.getElementById('yearInput');
+
+    const grid = document.getElementById('grid');
+    const searchInput = document.getElementById('searchInput');
+    const brandFilter = document.getElementById('brandFilter');
+    const cityFilter = document.getElementById('cityFilter');
+    const clearFilters = document.getElementById('clearFilters');
+
+    const adminPanel = document.getElementById('adminPanel');
+    const adminList = document.getElementById('adminList');
+    const adminPassInput = document.getElementById('adminPassInput');
+    const adminLoginBtn = document.getElementById('adminLoginBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const importBtn = document.getElementById('importBtn');
+    const importFile = document.getElementById('importFile');
+    const adminActions = document.getElementById('adminActions');
+    const changePassBtn = document.getElementById('changePassBtn');
+
+    const pinnedContainer = document.getElementById('pinnedContainer');
+    const pinnedImg = document.getElementById('pinnedImg');
+    const pinnedModel = document.getElementById('pinnedModel');
+    const pinnedBrandCity = document.getElementById('pinnedBrandCity');
+
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalPassInput = document.getElementById('modalPassInput');
+    const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalFeedback = document.getElementById('modalFeedback');
+
+    let stagingFiles = []; // {file, dataUrl}
+    let adminLoggedIn = false;
+    let adminLoginCallback = null; // callback to run after successful login (used by both adminNav and adminPanel flow)
+    let pendingUrlAdminTrigger = false; // true if URL param asked to open admin
+
+    // ======= Helpers =======
+    function saveToStorage(items){ localStorage.setItem(STORAGE_KEY, JSON.stringify(items)); }
+    function loadFromStorage(){ try{ return JSON.parse(localStorage.getItem(STORAGE_KEY)) || []; }catch(e){ return []; } }
+    function savePinned(id){ localStorage.setItem(PIN_KEY, id || ''); }
+    function loadPinned(){ return localStorage.getItem(PIN_KEY) || ''; }
+
+    function getLocalHash(){ return localStorage.getItem(LOCAL_HASH_KEY) || ''; }
+    function setLocalHash(h){ localStorage.setItem(LOCAL_HASH_KEY, h); }
+    function clearLocalHash(){ localStorage.removeItem(LOCAL_HASH_KEY); }
+
+    function currentAdminHash(){ // prefer local override, else built-in
+      return getLocalHash() || BUILT_IN_ADMIN_HASH;
+    }
+
+    // hash a text with SHA-256 and return hex string (using Web Crypto API)
+    async function sha256Hex(str){
+      const enc = new TextEncoder();
+      const data = enc.encode(str);
+      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      return hashArray.map(b => b.toString(16).padStart(2,'0')).join('');
+    }
+
+    // constant-time-ish compare to help avoid timing attacks in JS (not full protection but better than simple ===)
+    function safeCompare(a,b){
+      if(!a || !b || a.length !== b.length) return false;
+      let res = 0;
+      for(let i=0;i<a.length;i++) res |= (a.charCodeAt(i) ^ b.charCodeAt(i));
+      return res === 0;
+    }
+
+    // ======= File pick + drag/drop =======
+    pickFilesBtn.addEventListener('click', ()=>fileInput.click());
+    fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+    ;['dragenter','dragover'].forEach(ev=>{
+      dropZone.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.add('dragover'); });
+    });
+    ;['dragleave','drop'].forEach(ev=>{
+      dropZone.addEventListener(ev, (e)=>{ e.preventDefault(); e.stopPropagation(); dropZone.classList.remove('dragover'); });
+    });
+
+    dropZone.addEventListener('drop', (e)=>{
+      const files = e.dataTransfer.files; handleFiles(files);
+    });
+
+    function handleFiles(fileList){
+      const arr = Array.from(fileList).slice(0, 10); // limit 10 files at once
+      arr.forEach(file=>{
+        if(!file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (ev)=>{
+          stagingFiles.push({name:file.name, data:ev.target.result});
+          renderPreview();
+        }
+        reader.readAsDataURL(file);
+      })
+    }
+
+    function renderPreview(){
+      previewGrid.innerHTML = '';
+      stagingFiles.forEach((f, idx)=>{
+        const div = document.createElement('div'); div.className='preview';
+        div.innerHTML = `<img src="${f.data}" alt="preview"><button style="position:absolute;right:6px;top:6px;background:rgba(0,0,0,0.5);border-radius:8px;border:0;padding:6px;color:#fff;cursor:pointer" data-idx='${idx}'>✕</button>`;
+        previewGrid.appendChild(div);
+      });
+
+      // remove button handler
+      previewGrid.querySelectorAll('button').forEach(btn=>btn.addEventListener('click', (e)=>{
+        const i = Number(e.target.dataset.idx);
+        stagingFiles.splice(i,1); renderPreview();
+      }));
+    }
+
+    // ======= Upload to gallery (localStorage) =======
+    uploadBtn.addEventListener('click', ()=>{
+      if(stagingFiles.length === 0){ alert('No images selected — pick at least one image.'); return; }
+
+      const items = loadFromStorage();
+      const timestamp = Date.now();
+      const meta = {
+        owner: ownerName.value.trim(),
+        instagram: instagram.value.trim(),
+        tiktok: tiktok.value.trim(),
+        brand: brandInput.value.trim(),
+        model: modelInput.value.trim(),
+        hp: hpInput.value || null,
+        torque: torqueInput.value || null,
+        city: citySelect.value,
+        year: yearInput.value || null,
+      };
+
+      stagingFiles.forEach(f=>{
+        items.unshift({
+          id: 'csl_'+Math.random().toString(36).slice(2,9)+'_'+timestamp,
+          name: f.name,
+          data: f.data,
+          meta: meta,
+          uploadedAt: timestamp,
+          likes: 0,
+          approved: false // uploads require admin approval
+        });
+      });
+
+      saveToStorage(items);
+      stagingFiles = [];
+      renderPreview();
+      clearForm();
+      renderGrid();
+      alert('Uploaded! Your images are saved locally in this browser. They are pending admin approval (you will approve them from the Admin panel).');
+    });
+
+    function clearForm(){ ownerName.value=''; instagram.value=''; tiktok.value=''; brandInput.value=''; modelInput.value=''; hpInput.value=''; torqueInput.value=''; yearInput.value=''; }
+
+    // ======= Likes =======
+    function toggleLike(id){
+      const items = loadFromStorage();
+      const it = items.find(x=>x.id===id);
+      if(!it) return;
+      const likedSet = JSON.parse(localStorage.getItem('cslLikes_local')||'{}');
+      const already = !!likedSet[id];
+      if(already){ it.likes = Math.max(0,(it.likes||0)-1); delete likedSet[id]; }
+      else { it.likes = (it.likes||0)+1; likedSet[id]=true; }
+      localStorage.setItem('cslLikes_local', JSON.stringify(likedSet));
+      saveToStorage(items); renderGrid();
+    }
+    window.toggleLike = toggleLike;
+
+    // ======= Load & render grid =======
+    function renderGrid(){
+      const items = loadFromStorage();
+      const q = searchInput.value.trim().toLowerCase();
+      const brandF = brandFilter.value;
+      const cityF = cityFilter.value;
+
+      // only show approved items to public
+      const visible = items.filter(it => it.approved === true);
+
+      const filtered = visible.filter(it=>{
+        if(brandF && (!it.meta.brand || it.meta.brand.toLowerCase() !== brandF.toLowerCase())) return false;
+        if(cityF && it.meta.city !== cityF) return false;
+        if(!q) return true;
+        const hay = [it.meta.model, it.meta.brand, it.meta.owner, it.meta.city, it.name].join(' ').toLowerCase();
+        return hay.includes(q);
+      });
+
+      grid.innerHTML = filtered.map(it=>`<div class="card">
+          <img src="${it.data}" alt="${escapeHtml(it.name)}">
+          <div class="card-body">
+            <div class="meta"><div>
+              <div class="title">${escapeHtml(it.meta.model || 'Unknown model')}</div>
+              <div class="small" style="color:var(--muted)">${escapeHtml(it.meta.brand || '')} • ${escapeHtml(it.meta.city || '')}</div>
+            </div>
+            <div style="text-align:right">
+              <div class="small">${formatDate(it.uploadedAt)}</div>
+            </div></div>
+            <div class="chips">
+              ${it.meta.hp?`<div class='chip'>${it.meta.hp} HP</div>`:''}
+              ${it.meta.torque?`<div class='chip'>${it.meta.torque} Nm</div>`:''}
+              ${it.meta.year?`<div class='chip'>${it.meta.year}</div>`:''}
+              ${it.meta.owner?`<div class='chip'>Owner: ${escapeHtml(it.meta.owner)}</div>`:''}
+            </div>
+          </div>
+          <div class="card-footer">
+            <div>
+              ${it.meta.instagram?`<a class='link-btn' href='${fixUrl(it.meta.instagram)}' target='_blank'>Instagram</a>`:''}
+              ${it.meta.tiktok?`<a class='link-btn' style='margin-left:12px' href='${fixUrl(it.meta.tiktok)}' target='_blank'>TikTok</a>`:''}
+            </div>
+            <div>
+              <button class='nav-btn' onclick="toggleLike('${it.id}')">👍 ${it.likes||0}</button>
+              <a class='nav-btn' href='${it.data}' download='${escapeHtml(it.name)}' style='margin-left:8px'>Download</a>
+            </div>
+          </div>
+        </div>`).join('');
+
+      if(filtered.length === 0){ grid.innerHTML = '<div style="padding:28px; color:var(--muted)">No images yet — be the first to upload!</div>' }
+
+      // render pinned if exists and approved
+      const pinnedId = loadPinned();
+      if(pinnedId){
+        const pinItem = loadFromStorage().find(x=>x.id===pinnedId && x.approved===true);
+        if(pinItem){ pinnedContainer.style.display='block'; pinnedImg.src = pinItem.data; pinnedModel.textContent = pinItem.meta.model || 'Pinned'; pinnedBrandCity.textContent = `${pinItem.meta.brand || ''} • ${pinItem.meta.city || ''}`; }
+        else { pinnedContainer.style.display='none'; }
+      } else {
+        pinnedContainer.style.display='none';
+      }
+    }
+
+    function formatDate(ts){ const d=new Date(ts); return d.toLocaleString(); }
+    function escapeHtml(s){ if(!s && s !== 0) return ''; return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function fixUrl(s){ if(!s) return '#'; if(s.startsWith('http')) return s; if(s.startsWith('@')) return 'https://instagram.com/'+s.slice(1); return s.includes('instagram.com')||s.includes('tiktok.com')? ('https://'+s) : 'https://'+s; }
+
+    // ======= Admin helpers & UI flows =======
+    function openAdmin(){
+      // When admin is opened via nav button, open login modal if not logged in.
+      // If logged in already, show admin panel.
+      if(adminLoggedIn){ showAdminPanel(); return; }
+      adminLoginCallback = showAdminPanel; // what to do after successful login
+      showModal('Admin Login', 'Enter admin password to continue.', 'Login');
+    }
+
+    function closeAdmin(){ adminPanel.style.display='none'; adminPanel.setAttribute('aria-hidden','true'); adminActions.style.display='none'; adminList.innerHTML=''; adminLoggedIn=false; adminPassInput.value=''; }
+
+    function showAdminPanel(){
+      adminPanel.style.display='flex'; adminPanel.setAttribute('aria-hidden','false');
+      adminActions.style.display='block';
+      renderAdminList();
+    }
+
+    function showModal(title, subtitle, submitText){
+      modalTitle.textContent = title || 'Admin Login';
+      document.getElementById('modalSubtitle').textContent = subtitle || 'Enter admin password to continue.';
+      modalFeedback.textContent = '';
+      modalPassInput.value = '';
+      modalSubmitBtn.textContent = submitText || 'Login';
+      modalBackdrop.style.display = 'flex';
+      modalPassInput.focus();
+      // when user submits, verify password
+    }
+
+    function closeModal(){
+      modalBackdrop.style.display = 'none';
+    }
+
+    // modal submit handler
+    modalSubmitBtn.addEventListener('click', async ()=>{
+      const val = modalPassInput.value || '';
+      if(!val){ modalFeedback.textContent = 'Please enter the password.'; return; }
+      const hashed = await sha256Hex(val);
+      const expected = currentAdminHash();
+      if(safeCompare(hashed, expected)){
+        // success
+        adminLoggedIn = true;
+        closeModal();
+        if(typeof adminLoginCallback === 'function'){ adminLoginCallback(); adminLoginCallback = null; }
+        else { showAdminPanel(); }
+        return;
+      }
+      modalFeedback.textContent = 'Incorrect password.';
+      modalPassInput.value = '';
+      modalPassInput.focus();
+    });
+
+    // allow enter key in modal
+    modalPassInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ modalSubmitBtn.click(); } });
+
+    // admin login input + button on the admin panel (separate flow)
+    adminLoginBtn.addEventListener('click', async ()=>{
+      const val = adminPassInput.value || '';
+      if(!val){ alert('Enter admin password to login.'); return; }
+      const hashed = await sha256Hex(val);
+      if(safeCompare(hashed, currentAdminHash())){
+        adminLoggedIn = true;
+        adminPassInput.value = '';
+        showAdminPanel();
+      } else { alert('Incorrect password.'); adminPassInput.value=''; }
+    });
+
+    // render admin list (only when adminLoggedIn)
+    function renderAdminList(){
+      if(!adminLoggedIn){ adminList.innerHTML = '<div style="padding:16px;color:var(--muted)">Login as admin to manage uploads.</div>'; return; }
+      const items = loadFromStorage();
+      if(items.length===0){ adminList.innerHTML='<div style="padding:16px;color:var(--muted)">No uploaded items.</div>'; return; }
+      adminList.innerHTML = items.map(it=>`<div class="admin-item">
+          <img src="${it.data}">
+          <div style="flex:1">
+            <div style="font-weight:700">${escapeHtml(it.meta.model||'Unknown')}</div>
+            <div class="small" style="color:var(--muted)">${escapeHtml(it.meta.brand||'') } • ${escapeHtml(it.meta.city||'')}</div>
+            <div style="margin-top:6px" class="small">Uploaded: ${formatDate(it.uploadedAt)} • Likes: ${it.likes||0} • Approved: ${it.approved? 'Yes':'No'}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px">
+            <button class="nav-btn" onclick='adminToggleApprove("${it.id}")'>${it.approved? 'Unapprove':'Approve'}</button>
+            <button class="nav-btn" onclick='adminPin("${it.id}")'>${loadPinned()===it.id? 'Unpin':'Pin to Home'}</button>
+            <button class="nav-btn" onclick='adminDelete("${it.id}")' style="background:#5b0b0b;color:#fff">Delete</button>
+          </div>
+        </div>`).join('');
+    }
+
+    function adminToggleApprove(id){ if(!adminLoggedIn) return; const items = loadFromStorage(); const it = items.find(x=>x.id===id); if(!it) return; it.approved = !it.approved; saveToStorage(items); renderAdminList(); renderGrid(); }
+    window.adminToggleApprove = adminToggleApprove;
+
+    function adminDelete(id){ if(!adminLoggedIn) return; if(!confirm('Delete this item permanently?')) return; const items = loadFromStorage().filter(x=>x.id!==id); saveToStorage(items); if(loadPinned()===id) savePinned(''); renderAdminList(); renderGrid(); }
+    window.adminDelete = adminDelete;
+
+    function adminPin(id){ if(!adminLoggedIn) return; const current = loadPinned(); if(current===id){ savePinned(''); } else { savePinned(id); } renderAdminList(); renderGrid(); }
+    window.adminPin = adminPin;
+
+    function clearPinned(){ if(!confirm('Unpin the current post?')) return; savePinned(''); renderGrid(); }
+    window.clearPinned = clearPinned;
+
+    // Export / Import
+    exportBtn.addEventListener('click', ()=>{
+      if(!adminLoggedIn){ alert('Login as admin first.'); return; }
+      const data = localStorage.getItem(STORAGE_KEY) || '[]';
+      const blob = new Blob([data], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = 'csl_gallery_export.json'; a.click(); URL.revokeObjectURL(url);
+    });
+
+    importBtn.addEventListener('click', ()=>{ if(!adminLoggedIn){ alert('Login as admin first.'); return; } importFile.click(); });
+    importFile.addEventListener('change', (e)=>{
+      const f = e.target.files[0]; if(!f) return; const r = new FileReader(); r.onload = (ev)=>{ try{ const parsed = JSON.parse(ev.target.result); if(!Array.isArray(parsed)){ alert('Invalid file'); return; } saveToStorage(parsed); renderAdminList(); renderGrid(); alert('Imported.'); }catch(err){ alert('Failed to import.'); } }
+      r.readAsText(f);
+    });
+
+    // Change admin password flow (store hashed password in localStorage override)
+    changePassBtn.addEventListener('click', async ()=>{
+      if(!adminLoggedIn){ alert('Login as admin first.'); return; }
+      const current = prompt('Enter current admin password to change it:');
+      if(!current) return;
+      const curHash = await sha256Hex(current);
+      if(!safeCompare(curHash, currentAdminHash())){ alert('Current password incorrect.'); return; }
+      const next = prompt('Enter new admin password (will be saved locally as a hash). Choose something strong and store it safely:');
+      if(!next) return;
+      const nextHash = await sha256Hex(next);
+      setLocalHash(nextHash);
+      alert('Admin password updated and saved locally on this browser.');
+    });
+
+    // ======= Clear all storage =======
+    clearAllBtn.addEventListener('click', ()=>{
+      if(!confirm('Clear ALL uploaded images from this browser?')) return;
+      localStorage.removeItem(STORAGE_KEY); renderGrid(); alert('Cleared.');
+    });
+
+    // ======= Filters =======
+    searchInput.addEventListener('input', renderGrid);
+    brandFilter.addEventListener('change', renderGrid);
+    cityFilter.addEventListener('change', renderGrid);
+    clearFilters.addEventListener('click', ()=>{ searchInput.value=''; brandFilter.value=''; cityFilter.value=''; renderGrid(); });
+
+    // ======= Shortcuts: Ctrl/Cmd + Shift + A for admin =======
+    document.addEventListener('keydown', (e)=>{
+      const isMac = navigator.platform.toUpperCase().indexOf('MAC')>=0;
+      const ctrlOk = isMac ? e.metaKey : e.ctrlKey;
+      if(ctrlOk && e.shiftKey && e.key && e.key.toLowerCase() === 'a'){
+        e.preventDefault();
+        // open admin login modal (or admin panel if already logged)
+        openAdmin();
+      }
+    });
+
+    // ======= URL trigger: if user opens site with ?admin=true or ?adminAccess=true open admin modal (still requires password) =======
+    function checkUrlForAdminTrigger(){
+      const params = new URLSearchParams(location.search);
+      if(params.get('admin') === 'true' || params.get('adminAccess') === 'true' || params.get('adminAccess') === '1'){
+        // set flag to open admin flow
+        pendingUrlAdminTrigger = true;
+        // open modal immediately
+        adminLoginCallback = showAdminPanel;
+        showModal('Admin Login', 'Enter admin password to continue.', 'Login');
+      }
+    }
+
+    // ======= Init =======
+    renderGrid();
+    checkUrlForAdminTrigger();
+
+    // If URL hash is #admin also trigger
+    if(location.hash === '#admin'){ adminLoginCallback = showAdminPanel; showModal('Admin Login', 'Enter admin password to continue.', 'Login'); }
+
+    // mouse/keyboard accessible scroll top
+    function scrollToTop(){ window.scrollTo({top:0, behavior:'smooth'}); }
+    window.scrollToTop = scrollToTop;
+
+    // expose clearPinned for hero unpin button
+    window.clearPinned = clearPinned;
+
+    // Expose function to let admin log out (useful for testing)
+    window.adminLogout = function(){ adminLoggedIn = false; closeAdmin(); alert('Logged out.'); }
+
+    // Make the mobile admin link point to this page with ?admin=true explicitly
+    (function setMobileAdminLink(){
+      const link = document.getElementById('mobileAdminLink');
+      if(!link) return;
+      const base = location.pathname || '/';
+      link.href = base + '?admin=true';
+    })();
+
+    // ensure admin panel is accessible via adminNavBtn when logged
+    document.getElementById('adminNavBtn').addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') openAdmin(); });
+
+    // friendly note in console to indicate admin protection
+    console.info('CSL Performance — admin features protected by a SHA-256 hash (client-side). Shortcuts: Ctrl/Cmd + Shift + A');
+  </script>
+</body>
+</html>
